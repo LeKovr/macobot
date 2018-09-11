@@ -26,6 +26,23 @@ COMMAND   ?=
 # Example: --issue_link '* [%[1]s](https://redmine/issues/%[1]s)\n'
 ADD       ?=
 
+# -----------------------------------------------------------------------------
+# Docker image config
+
+# application name, docker-compose prefix
+
+# Hardcoded in docker-compose.yml service name
+DC_SERVICE    ?= app
+
+# Generated docker image
+DC_IMAGE      ?= $(PRG)
+
+# docker-compose version
+DC_VER        ?= 1.14.0
+
+# dcape network connect to, must be set in .env
+DCAPE_NET     ?= dcape_default
+
 # ------------------------------------------------------------------------------
 
 # Файл .env
@@ -98,6 +115,50 @@ dist: build-all
 	$(DIST_DIRS) tar -zcf $(PRG)-${VERSION}-{}.tar.gz {} \; && \
 	$(DIST_DIRS) zip -r $(PRG)-${VERSION}-{}.zip {} \; && \
 	cd ..
+
+# ------------------------------------------------------------------------------
+# Docker part
+# ------------------------------------------------------------------------------
+
+## Start service in container
+up:
+up: CMD=up -d $(DC_SERVICE)
+up: dc
+
+## Stop service
+down:
+down: CMD=rm -f -s $(DC_SERVICE)
+down: dc
+
+## Build docker image
+build-docker:
+	@$(MAKE) -s dc CMD="build --force-rm $(DC_SERVICE)"
+
+## Build docker image without cache
+build-docker-forcer:
+	@$(MAKE) -s dc CMD="build --no-cache --force-rm $(DC_SERVICE)"
+
+# Remove docker image & temp files
+clean-docker:
+	[[ "$$($(DOCKER_BIN) images -q $(DC_IMAGE) 2> /dev/null)" == "" ]] || $(DOCKER_BIN) rmi $(DC_IMAGE)
+
+# ------------------------------------------------------------------------------
+
+docker-install-poma:
+	$(MAKE) -s dc CMD="run cmd make clean poma-install poma-create"
+
+# $$PWD используется для того, чтобы текущий каталог был доступен в контейнере по тому же пути
+# и относительные тома новых контейнеров могли его использовать
+## run docker-compose
+dc: docker-compose.yml
+	@docker run --rm  -i \
+	  -v /var/run/docker.sock:/var/run/docker.sock \
+	  -v $$PWD:$$PWD \
+	  -w $$PWD \
+	  --env=DC_IMAGE=$(DC_IMAGE) \
+	  docker/compose:$(DC_VER) \
+	  -p $(PRG) \
+	  $(CMD)
 
 .PHONY: build install clean bootstrap-dist build-all dist config
 
