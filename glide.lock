@@ -1,0 +1,51 @@
+hash: 962b4dbfed61f14bab5e1dd9977eda59017f1ed5edbbd5f3a001ec2362e30449
+updated: 2018-09-12T00:46:36.587384724+03:00
+imports:
+- name: github.com/google/uuid
+  version: e704694aed0ea004bb7eb1fc2e911d048a54606a
+- name: github.com/gorilla/websocket
+  version: 66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d
+- name: github.com/jessevdk/go-flags
+  version: 1679536dcc895411a9f5848d9a0250be7856448c
+- name: github.com/mattermost/mattermost-server
+  version: e32581aef3253bb0691d6fd678fbf01e86f2c10c
+  subpackages:
+  - mlog
+  - model
+  - utils/jsonutils
+  - utils/markdown
+- name: github.com/nicksnyder/go-i18n
+  version: 04f547cc50da4c144c5fdfd4495aef143637a236
+  subpackages:
+  - i18n
+  - i18n/bundle
+  - i18n/language
+  - i18n/translation
+- name: github.com/pborman/uuid
+  version: 25cd46ecac86f0b9026656202fe85b4a79a6659f
+- name: github.com/pelletier/go-toml
+  version: c2dbbc24a97911339e01bda0b8cabdbd8f13b602
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
+- name: go.uber.org/atomic
+  version: 1ea20fb1cbb1cc08cbd0d913a96dead89aa18289
+- name: go.uber.org/multierr
+  version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
+- name: go.uber.org/zap
+  version: 67bc79d13d155c02fd008f721863ff8cc5f30659
+  subpackages:
+  - buffer
+  - internal/bufferpool
+  - internal/color
+  - internal/exit
+  - zapcore
+- name: golang.org/x/crypto
+  version: c7dcf104e3a7a1417abc0230cb0d5240d764159d
+  subpackages:
+  - bcrypt
+  - blowfish
+- name: gopkg.in/natefinch/lumberjack.v2
+  version: a96e63847dc3c67d17befa69c303767e2f84e54f
+- name: gopkg.in/yaml.v2
+  version: 7f97868eec74b32b0982dd158a51a446d1da7eb5
+testImports: []

@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/mattermost/mattermost-server/model"
@@ -18,89 +19,103 @@ import (
 
 // Config holds all config vars
 type Config struct {
-	Addr     string `long:"addr" 			description:"Mattermost server address"`
-	Login    string `long:"login" 		description:"Bot login"`
-	Password string `long:"password" 	description:"Bot password"`
-	Team     string `long:"team"  		description:"Bot team"`
-	Channel  string `long:"channel" 	description:"Command channel"`
-	Command  string `long:"command" 	description:"Command file" default:"macobot.sh"`
+	Addr      string `long:"addr"       description:"Mattermost server address"`
+	Login     string `long:"login"      description:"Bot login"`
+	Password  string `long:"password"   description:"Bot password"`
+	Team      string `long:"team"       description:"Bot team"`
+	Channel   string `long:"channel"    description:"Command channel"`
+	Command   string `long:"command"    description:"Command file" default:"./macobot.sh"`
+	IssueLink string `long:"issue_link" description:"Format #NNN with this link"`
 }
 
-const ()
+var (
+	reIDs = regexp.MustCompile(`(?:^#|\s#)(\d+)($|\W)`)
+	reCmd = regexp.MustCompile(`(?:^=)(\w+)((?:\s+)(.+))?$`)
 
-var client *model.Client4
-var webSocketClient *model.WebSocketClient
+	version = "0.1-dev"
+)
 
-var botUser *model.User
-var botTeam *model.Team
-var debuggingChannel *model.Channel
+type Bot struct {
+	config  *Config
+	client  *model.Client4
+	user    *model.User
+	team    *model.Team
+	channel *model.Channel
+	started time.Time
+}
 
 // Documentation for the Go driver can be found
 // at https://godoc.org/github.com/mattermost/platform/model#Client
 func main() {
 
-	var cfg Config
+	// Parse command args
+	cfg := ParseFlags()
+
+	bot := &Bot{config: cfg, started: time.Now()}
+
+	bot.client = model.NewAPIv4Client(cfg.Addr)
+
+	// Lets test to see if the mattermost server is up and running
+	bot.MakeSureServerIsRunning()
+
+	// lets attempt to login to the Mattermost server as the bot user
+	// This will set the token required for all future calls
+	// You can get this token with client.AuthToken
+	bot.LoginAsTheBotUser()
+	println("Logged in as " + bot.user.Username)
+
+	// Lets find our bot team
+	bot.FindBotTeam()
+
+	// Attach bot to existing channel
+	bot.AttachBotChannel()
+
+	// Lets start listening to some channels via the websocket!
+	wsaddr := strings.Replace(cfg.Addr, "http", "ws", 1)
+	webSocketClient, err := model.NewWebSocketClient4(wsaddr, bot.client.AuthToken)
+	if err != nil {
+		println("We failed to connect to the web socket " + wsaddr)
+		PrintErrorM(err)
+		os.Exit(1)
+	}
+
+	webSocketClient.Listen()
+	bot.SendMsgToChannel("_"+bot.user.Username+" **connected**_", "")
+	go func() {
+		for {
+			select {
+			case resp := <-webSocketClient.EventChannel:
+				bot.HandleWebSocketResponse(resp)
+			}
+		}
+	}()
+
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	bot.SendMsgToChannel("_"+bot.user.Username+" **disconnected**_", "")
+	if webSocketClient != nil {
+		webSocketClient.Close()
+	}
+	println("Shutdown")
+}
+
+func ParseFlags() *Config {
+	cfg := Config{}
 	_, err := flags.Parse(&cfg)
 	if err != nil {
 		if e, ok := err.(*flags.Error); ok && e.Type == flags.ErrHelp {
 			os.Exit(1) // help printed
 		} else {
+			println(err.Error())
 			os.Exit(2) // error message written already
 		}
 	}
-
-	println(cfg.Login)
-
-	SetupGracefulShutdown()
-
-	client = model.NewAPIv4Client(cfg.Addr)
-
-	// Lets test to see if the mattermost server is up and running
-	MakeSureServerIsRunning()
-
-	// lets attempt to login to the Mattermost server as the bot user
-	// This will set the token required for all future calls
-	// You can get this token with client.AuthToken
-	LoginAsTheBotUser(&cfg)
-
-	// Lets find our bot team
-	FindBotTeam(&cfg)
-
-	// This is an important step.  Lets make sure we use the botTeam
-	// for all future web service requests that require a team.
-	//client.SetTeamId(botTeam.Id)
-
-	// Lets create a bot channel for logging debug messages into
-	AttachBotDebuggingChannel(&cfg)
-
-	// Lets start listening to some channels via the websocket!
-	wsaddr := strings.Replace(cfg.Addr, "http", "ws", 1)
-	webSocketClient, err := model.NewWebSocketClient4(wsaddr, client.AuthToken)
-	if err != nil {
-		println("We failed to connect to the web socket " + wsaddr)
-		PrintErrorT(err)
-		os.Exit(1)
-
-	}
-
-	webSocketClient.Listen()
-	SendMsgToDebuggingChannel("_"+botUser.Username+" has **started** running_", "")
-
-	go func() {
-		for {
-			select {
-			case resp := <-webSocketClient.EventChannel:
-				HandleWebSocketResponse(resp)
-			}
-		}
-	}()
-
-	// You can block forever with
-	select {}
+	return &cfg
 }
 
-func MakeSureServerIsRunning() {
-	if props, resp := client.GetOldClientConfig(""); resp.Error != nil {
+func (bot *Bot) MakeSureServerIsRunning() {
+	if props, resp := bot.client.GetOldClientConfig(""); resp.Error != nil {
 		println("There was a problem pinging the Mattermost server.  Are you sure it's running?")
 		PrintErrorM(resp.Error)
 		os.Exit(1)
@@ -109,112 +124,111 @@ func MakeSureServerIsRunning() {
 	}
 }
 
-func LoginAsTheBotUser(cfg *Config) {
-	if user, resp := client.Login(cfg.Login, cfg.Password); resp.Error != nil {
+func (bot *Bot) LoginAsTheBotUser() {
+	if user, resp := bot.client.Login(bot.config.Login, bot.config.Password); resp.Error != nil {
 		println("There was a problem logging into the Mattermost server.  Are you sure ran the setup steps from the README.md?")
 		PrintError(resp.Error)
 		os.Exit(1)
 	} else {
-		botUser = user
+		bot.user = user
 	}
 }
 
-func FindBotTeam(cfg *Config) {
-	if team, resp := client.GetTeamByName(cfg.Team, ""); resp.Error != nil {
+func (bot *Bot) FindBotTeam() {
+	if team, resp := bot.client.GetTeamByName(bot.config.Team, ""); resp.Error != nil {
 		println("We failed to get the initial load")
-		println("or we do not appear to be a member of the team '" + cfg.Team + "'")
+		println("or we do not appear to be a member of the team '" + bot.config.Team + "'")
 		PrintError(resp.Error)
 		os.Exit(1)
 	} else {
-		botTeam = team
+		bot.team = team
 	}
 }
 
-func AttachBotDebuggingChannel(cfg *Config) {
-	if rchannel, resp := client.GetChannelByName(cfg.Channel, botTeam.Id, ""); resp.Error != nil {
+func (bot *Bot) AttachBotChannel() {
+	if rchannel, resp := bot.client.GetChannelByName(bot.config.Channel, bot.team.Id, ""); resp.Error != nil {
 		println("We failed to get the channels")
 		PrintError(resp.Error)
 		os.Exit(1)
 	} else {
-		debuggingChannel = rchannel
+		bot.channel = rchannel
 		return
 	}
-
 }
 
-func SendMsgToDebuggingChannel(msg string, replyToId string) {
+func (bot *Bot) SendMsgToChannelByID(msg string, replyToId string, channelID string) {
 	post := &model.Post{}
-	post.ChannelId = debuggingChannel.Id
+	post.ChannelId = channelID
 	post.Message = msg
 
-	post.RootId = replyToId
-
-	if _, resp := client.CreatePost(post); resp.Error != nil {
+	if _, resp := bot.client.CreatePost(post); resp.Error != nil {
 		println("We failed to send a message to the logging channel")
-		PrintError(resp.Error)
+		PrintErrorM(resp.Error)
 	}
 }
 
-func HandleWebSocketResponse(event *model.WebSocketEvent) {
-	HandleMsgFromDebuggingChannel(event)
+func (bot *Bot) SendMsgToChannel(msg string, replyToId string) {
+	bot.SendMsgToChannelByID(msg, replyToId, bot.channel.Id)
 }
 
-func HandleMsgFromDebuggingChannel(event *model.WebSocketEvent) {
-	// If this isn't the debugging channel then lets ingore it
-	if event.Broadcast.ChannelId != debuggingChannel.Id {
-		return
-	}
+func (bot *Bot) HandleWebSocketResponse(event *model.WebSocketEvent) {
+	bot.HandleMsgFromChannel(event)
+}
 
+func (bot *Bot) HandleMsgFromChannel(event *model.WebSocketEvent) {
 	// Lets only reponded to messaged posted events
-	if event.Event != model.WEBSOCKET_EVENT_POSTED {
+	if event == nil || event.Event != model.WEBSOCKET_EVENT_POSTED {
 		return
 	}
-
-	println("responding to debugging channel msg")
 
 	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 	if post != nil {
 
-		/*
-			// ignore my events
-			if post.UserId == botUser.Id {
-				return
+		// ignore my events
+		if post.UserId == bot.user.Id {
+			return
+		}
+
+		// Check if post contains issue id(s)
+		if bot.config.IssueLink != "" {
+			if matched := reIDs.FindAllStringSubmatch(post.Message, -1); len(matched) > 0 {
+				s := ""
+				for _, v := range matched {
+					id := v[1]
+					s += fmt.Sprintf(bot.config.IssueLink, id)
+				}
+				if s != "" {
+					bot.SendMsgToChannelByID("Post links:\n"+s, post.Id, post.ChannelId)
+				}
 			}
-		*/
-		// if you see any word matching 'alive' then respond
-		if matched, _ := regexp.MatchString(`(?:^|\W)alive(?:$|\W)`, post.Message); matched {
-			SendMsgToDebuggingChannel("Yes I'm running", post.Id)
+		}
+
+		// If this isn't the debugging channel then lets ingore it
+		if event.Broadcast.ChannelId != bot.channel.Id {
 			return
 		}
 
-		// if you see any word matching 'up' then respond
-		if matched, _ := regexp.MatchString(`(?:^|\W)up(?:$|\W)`, post.Message); matched {
-			SendMsgToDebuggingChannel("Yes I'm running", post.Id)
+		// Check if post contains bot command
+		if matches := reCmd.FindStringSubmatch(post.Message); len(matches) > 0 {
+			println("GOT> " + post.Message)
+			if matches[1] == "uptime" {
+				bot.SendMsgToChannel("I'm up since "+bot.started.Format("Mon Jan _2 15:04:05 2006"), post.Id)
+			} else {
+				user, _ := bot.client.GetUser(post.UserId, "")
+				bot.SendMsgToChannel(fmt.Sprintf("Выполняю команду **%s** по запросу @%s", matches[1], user.Username), post.Id)
+				err := bot.run(matches[1:], post.Id)
+				if err != nil {
+					bot.err(matches[1:], post.Id, err)
+				}
+			}
 			return
 		}
 
-		// if you see any word matching 'running' then respond
-		if matched, _ := regexp.MatchString(`(?:^|\W)running(?:$|\W)`, post.Message); matched {
-			SendMsgToDebuggingChannel("Yes I'm running", post.Id)
-			return
-		}
-
-		// if you see any word matching 'hello' then respond
-		if matched, _ := regexp.MatchString(`(?:^|\W)hello(?:$|\W)`, post.Message); matched {
-			SendMsgToDebuggingChannel("Yes I'm running", post.Id)
-			return
-		}
 	}
-
-	SendMsgToDebuggingChannel("I did not understand you!", post.Id)
 }
 
-func PrintError(err error) { //*model.AppError) {
-	println("\t%v", err)
-}
-
-func PrintErrorT(err interface{}) { //*model.AppError) {
-	fmt.Printf("\t%+v", err)
+func PrintError(err error) {
+	fmt.Printf("Error: %+v", err)
 }
 
 func PrintErrorM(err *model.AppError) {
@@ -222,19 +236,4 @@ func PrintErrorM(err *model.AppError) {
 	println("\t\t" + err.Message)
 	println("\t\t" + err.Id)
 	println("\t\t" + err.DetailedError)
-}
-
-func SetupGracefulShutdown() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for _ = range c {
-			if webSocketClient != nil {
-				webSocketClient.Close()
-			}
-
-			SendMsgToDebuggingChannel("**stopped** running_", "")
-			os.Exit(0)
-		}
-	}()
 }
