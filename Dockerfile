@@ -16,7 +16,7 @@ ENV DOCKERFILE_VERSION  180911
 
 RUN apk --update add curl make coreutils diffutils gawk git openssl postgresql-client bash
 
-WORKDIR /opt/,acobot
+WORKDIR /opt/macobot
 
 COPY --from=0 /go/bin/macobot .
 
