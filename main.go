@@ -19,13 +19,14 @@ import (
 
 // Config holds all config vars
 type Config struct {
-	Addr      string `long:"addr"       description:"Mattermost server address"`
-	Login     string `long:"login"      description:"Bot login"`
-	Password  string `long:"password"   description:"Bot password"`
-	Team      string `long:"team"       description:"Bot team"`
-	Channel   string `long:"channel"    description:"Command channel"`
-	Command   string `long:"command"    description:"Command file" default:"./macobot.sh"`
-	IssueLink string `long:"issue_link" description:"Format #NNN with this link"`
+	Addr        string `long:"addr"       description:"Mattermost server address"`
+	Login       string `long:"login"      description:"Bot login"`
+	Password    string `long:"password"   description:"Bot password"`
+	Team        string `long:"team"       description:"Bot team"`
+	Channel     string `long:"channel"    description:"Command channel"`
+	Command     string `long:"command"    description:"Command file" default:"./macobot.sh"`
+	IssueLink   string `long:"issue_link" description:"Format #NNN with this link"`
+	CommandWait int    `long:"wait"       description:"Wait command exec (secs)" default:"5"`
 }
 
 var (

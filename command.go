@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
 	"sync"
+	"time"
 )
 
 // -----------------------------------------------------------------------------
@@ -17,7 +19,12 @@ func (bot *Bot) err(cmd []string, post string, err error) {
 
 func (bot *Bot) run(cmd []string, post string) error {
 	bot.SendMsgToChannel("---", post)
-	shell := exec.Command(bot.config.Command, cmd...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(bot.config.CommandWait)*time.Second)
+	defer cancel()
+
+	//	shell := exec.Command(bot.config.Command, cmd[0], cmd[2])
+	shell := exec.CommandContext(ctx, bot.config.Command, cmd[0], cmd[2])
+
 	stdout, err := shell.StdoutPipe()
 	if err != nil {
 		return err
