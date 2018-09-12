@@ -14,7 +14,7 @@ MAINTAINER Aleksey Kovrizhkin <lekovr@gmail.com>
 
 ENV DOCKERFILE_VERSION  180911
 
-RUN apk --update add curl make coreutils diffutils gawk git openssl postgresql-client bash
+RUN apk --update add curl make coreutils diffutils gawk git openssl postgresql-client bash jq
 
 WORKDIR /opt/macobot
 
