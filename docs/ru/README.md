@@ -1,11 +1,12 @@
 # macobot
 > Бот выполнения команд для [mattermost](https://www.mattermost.org/)
 
+<p align="center">
 [![GoCard][gc1]][gc2]
  [![GitHub Release][gr1]][gr2]
  [![GitHub code size in bytes][sz]]()
  [![GitHub license][gl1]][gl2]
-
+</p>
 [gc1]: https://goreportcard.com/badge/LeKovr/macobot
 [gc2]: https://goreportcard.com/report/github.com/LeKovr/macobot
 [gr1]: https://img.shields.io/github/release/LeKovr/macobot.svg

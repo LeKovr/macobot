@@ -1,11 +1,12 @@
 # macobot
 > **ma**ttermost **co**mmand **bot**
 
+<p align="center">
 [![GoCard][gc1]][gc2]
  [![GitHub Release][gr1]][gr2]
  [![GitHub code size in bytes][sz]]()
  [![GitHub license][gl1]][gl2]
-
+</p>
 [gc1]: https://goreportcard.com/badge/LeKovr/macobot
 [gc2]: https://goreportcard.com/report/github.com/LeKovr/macobot
 [gr1]: https://img.shields.io/github/release/LeKovr/macobot.svg
@@ -16,10 +17,11 @@
 
 <p align="center">
   <span>English</span> |
-  <a href="blob/tree/docs/ru/README.md">Pусский</a> |
+  <a href="tree/master/docs/ru">Pусский</a>
 </p>
 
 Project status: PoC is ready
+
 ## TODO
 
 * [ ] disconnect detection
