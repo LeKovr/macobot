@@ -1,7 +1,6 @@
 # macobot
 > **ma**ttermost **co**mmand **bot**
 
-<p align="center">
 [![GoCard][gc1]][gc2]
  [![GitHub Release][gr1]][gr2]
  [![GitHub code size in bytes][sz]]()
@@ -13,7 +12,6 @@
 [sz]: https://img.shields.io/github/languages/code-size/LeKovr/macobot.svg
 [gl1]: https://img.shields.io/github/license/LeKovr/macobot.svg
 [gl2]: LICENSE
-</p>
 <p align="center">
   <span>English</span> |
   <a href="docs/ru/README.md">Pусский</a>
