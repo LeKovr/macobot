@@ -1,5 +1,5 @@
 # macobot
-> **ma**ttermost **co**mmand **bot**
+> [**ma**ttermost](https://www.mattermost.org/) **co**mmand **bot**
 
 [![GoCard][gc1]][gc2]
  [![GitHub Release][gr1]][gr2]
