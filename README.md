@@ -14,6 +14,12 @@
 [gl1]: https://img.shields.io/github/license/LeKovr/macobot.svg
 [gl2]: LICENSE
 
+<p align="center">
+  <span>English</span> |
+  <a href="blob/tree/docs/ru/README.md">Pусский</a> |
+</p>
+
+Project status: PoC is ready
 ## TODO
 
 * [ ] disconnect detection
