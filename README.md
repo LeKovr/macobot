@@ -5,6 +5,7 @@
  [![GitHub Release][gr1]][gr2]
  [![GitHub code size in bytes][sz]]()
  [![GitHub license][gl1]][gl2]
+
 [gc1]: https://goreportcard.com/badge/LeKovr/macobot
 [gc2]: https://goreportcard.com/report/github.com/LeKovr/macobot
 [gr1]: https://img.shields.io/github/release/LeKovr/macobot.svg
