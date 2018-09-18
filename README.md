@@ -12,6 +12,7 @@
 [sz]: https://img.shields.io/github/languages/code-size/LeKovr/macobot.svg
 [gl1]: https://img.shields.io/github/license/LeKovr/macobot.svg
 [gl2]: LICENSE
+
 <p align="center">
   <span>English</span> |
   <a href="docs/ru/README.md">Pусский</a>
