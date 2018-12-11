@@ -25,8 +25,8 @@ type Config struct {
 	Team        string `long:"team"       description:"Bot team"`
 	Channel     string `long:"channel"    description:"Command channel"`
 	Command     string `long:"command"    description:"Command file" default:"./macobot.sh"`
-	IssueLink   string `long:"issue_link" description:"Format #NNN with this link"`
 	CommandWait int    `long:"wait"       description:"Wait command exec (secs)" default:"5"`
+	IssueLink   string `long:"issue_link" description:"Format #NNN with this link"`
 }
 
 var (
